@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Initial loading layout shown by Android while the JS widget task handler
+  hasn't run yet (e.g. on first install). Replaced as soon as renderWidget()
+  is called from widgetTaskHandler.ts.
+
+  react-native-android-widget swaps this out with the React-rendered RemoteViews.
+  Keep it simple so there's no flash of wrong content.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="#0d0d1a"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="💌 LockNote"
+        android:textColor="#e94560"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Loading…"
+        android:textColor="#aaaacc"
+        android:textSize="12sp"
+        android:layout_marginTop="8dp" />
+
+</LinearLayout>

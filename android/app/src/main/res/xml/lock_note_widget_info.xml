@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AppWidgetProviderInfo — metadata for the LockNote home-screen widget.
+
+  Key attributes:
+    minWidth / minHeight : minimum size in dp (roughly 2×2 cells on a 4-column grid).
+    updatePeriodMillis   : OS-scheduled update interval (min 1800000 ms = 30 min).
+                           Real-time updates come via requestWidgetUpdate() from JS;
+                           this is just the fallback periodic refresh.
+    widgetCategory       : WIDGET_CATEGORY_HOME_SCREEN | WIDGET_CATEGORY_KEYGUARD
+                           (keyguard = lock screen on Android ≤ 4.4; on newer versions
+                            lock-screen widgets are handled differently via Notification
+                            or QuickSettings — see SETUP.md).
+    targetCellWidth / targetCellHeight : Android 12+ grid cell spec (optional but nice).
+    previewImage         : shown in the widget picker — replace with your own drawable.
+    description          : shown in the widget picker (Android 12+).
+-->
+<appwidget-provider
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="2"
+    android:maxResizeWidth="250dp"
+    android:maxResizeHeight="200dp"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/lock_note_widget_loading"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_description"
+    android:previewImage="@drawable/widget_preview"
+/>
