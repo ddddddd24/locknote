@@ -27,5 +27,8 @@ GoogleService-Info.plist
 # macOS
 .DS_Store
 
+# Lock file — not committed so SDK version is always resolved fresh
+package-lock.json
+
 # TypeScript
 *.js.map
