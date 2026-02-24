@@ -54,15 +54,9 @@ export function DrawingCanvas({ onPathsChange }: DrawingCanvasProps) {
     })
     .onUpdate((e) => {
       activePath.current += ` L${e.x.toFixed(1)},${e.y.toFixed(1)}`;
-      // Trigger a re-render for live preview by creating a fake in-progress state.
-      setStrokes((prev) => {
-        const copy = [...prev];
-        // Replace last element if it's the active stroke.
-        if (copy.length > 0 && copy[copy.length - 1].d === activePath.current.split(' L')[0] + ' (active)') {
-          copy[copy.length - 1] = { d: activePath.current, color: activeColor, width: brushWidth };
-        }
-        return copy;
-      });
+      // Force a re-render so the SVG shows the stroke in real time.
+      // We don't commit to `strokes` yet — allPaths merges activePath at render time.
+      setStrokes((prev) => [...prev]);
     })
     .onEnd(() => {
       const finalPath = activePath.current;

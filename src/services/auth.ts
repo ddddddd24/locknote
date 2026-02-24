@@ -17,7 +17,6 @@ import {
   set,
   get,
   remove,
-  serverTimestamp,
   onValue,
   Unsubscribe,
 } from 'firebase/database';

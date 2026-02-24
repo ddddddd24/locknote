@@ -81,14 +81,19 @@ export async function registerForPushNotifications(): Promise<string | null> {
  */
 export function setupNotifications(): () => void {
   // Register token and persist to Firebase.
+  // Wrapped in try/catch — getExpoPushTokenAsync throws if the EAS project ID
+  // is a placeholder or if running in Expo Go without FCM configured.
   (async () => {
-    const token = await registerForPushNotifications();
-    if (!token) return;
-
-    const userId = await AsyncStorage.getItem('locknote_user_id');
-    if (userId) {
-      await saveFcmToken(userId, token);
-      await AsyncStorage.setItem('locknote_push_token', token);
+    try {
+      const token = await registerForPushNotifications();
+      if (!token) return;
+      const userId = await AsyncStorage.getItem('locknote_user_id');
+      if (userId) {
+        await saveFcmToken(userId, token);
+        await AsyncStorage.setItem('locknote_push_token', token);
+      }
+    } catch (err) {
+      console.warn('[Notifications] Token registration skipped:', err);
     }
   })();
 
