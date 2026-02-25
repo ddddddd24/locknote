@@ -1,7 +1,5 @@
 /**
  * HomeScreen — main screen for bubliboo.
- * Shows the latest note, a daily drawing prompt, the "thinking of you" button,
- * mood picker, and a link to message history.
  */
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -20,8 +18,10 @@ import { useApp }                   from '../context/AppContext';
 import { subscribeToLatestMessage } from '../services/messages';
 import { sendNudge, subscribeToNudges, Nudge } from '../services/nudge';
 import { setMood, subscribeMood, MOOD_OPTIONS } from '../services/mood';
+import { sendReaction, subscribeToReactions, REACTION_EMOJIS, Reaction } from '../services/reaction';
 import { MessageDisplay }           from '../components/MessageDisplay';
 import { NudgeAnimation }           from '../components/NudgeAnimation';
+import { ReactionAnimation }        from '../components/ReactionAnimation';
 import { getTodayPrompt }           from '../utils/dailyPrompts';
 import { LatestMessage, RootStackParamList } from '../types';
 import { COLORS } from '../theme';
@@ -33,11 +33,12 @@ const NUDGE_COOLDOWN_MS = 30_000;
 export function HomeScreen() {
   const navigation              = useNavigation<NavProp>();
   const { currentUser, partner, refreshPartner, unpair } = useApp();
-  const [latestMsg,   setLatestMsg]   = useState<LatestMessage | null>(null);
-  const [activeNudge, setActiveNudge] = useState<Nudge | null>(null);
-  const [nudgeSent,   setNudgeSent]   = useState(false);
-  const [partnerMood, setPartnerMood] = useState<string | null>(null);
-  const [myMood,      setMyMood]      = useState<string | null>(null);
+  const [latestMsg,      setLatestMsg]      = useState<LatestMessage | null>(null);
+  const [activeNudge,    setActiveNudge]    = useState<Nudge | null>(null);
+  const [activeReaction, setActiveReaction] = useState<string | null>(null);
+  const [nudgeSent,      setNudgeSent]      = useState(false);
+  const [partnerMood,    setPartnerMood]    = useState<string | null>(null);
+  const [myMood,         setMyMood]         = useState<string | null>(null);
 
   const mountTime    = useRef(Date.now()).current;
   const pulseAnim    = useRef(new Animated.Value(1)).current;
@@ -46,7 +47,7 @@ export function HomeScreen() {
 
   const todayPrompt = getTodayPrompt();
 
-  // ── Header right: history button ─────────────────────────────────────────
+  // ── Header ────────────────────────────────────────────────────────────────
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -95,16 +96,21 @@ export function HomeScreen() {
       }
     });
 
-    return () => { unsubMsg(); unsubNudge(); };
+    const unsubReaction = subscribeToReactions(currentUser.pairId, (r: Reaction) => {
+      // Show animation only when partner reacts to our drawing (we sent the latest msg).
+      if (r.senderId !== currentUser.id && r.timestamp > mountTime) {
+        setActiveReaction(r.emoji);
+      }
+    });
+
+    return () => { unsubMsg(); unsubNudge(); unsubReaction(); };
   }, [currentUser?.pairId, currentUser?.id]);
 
-  // Subscribe to partner's mood.
   useEffect(() => {
     if (!partner?.id) return;
     return subscribeMood(partner.id, setPartnerMood);
   }, [partner?.id]);
 
-  // Subscribe to own mood (to restore on reopen).
   useEffect(() => {
     if (!currentUser?.id) return;
     return subscribeMood(currentUser.id, setMyMood);
@@ -142,23 +148,33 @@ export function HomeScreen() {
 
   async function handleMoodTap(emoji: string) {
     if (!currentUser?.id) return;
-    const next = myMood === emoji ? null : emoji; // tap same emoji to clear
-    await setMood(currentUser.id, next);
+    await setMood(currentUser.id, myMood === emoji ? null : emoji);
+  }
+
+  async function handleReaction(emoji: string) {
+    if (!currentUser?.pairId) return;
+    try {
+      await sendReaction(currentUser.pairId, currentUser.id, emoji);
+    } catch {
+      // silent fail — reactions are low-stakes
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   const partnerName = partner?.name ?? 'your partner';
+  // Show reaction buttons when there's a received drawing to react to.
+  const canReact = !!latestMsg && latestMsg.authorId !== currentUser?.id;
 
   return (
     <View style={styles.container}>
 
-      {/* Fullscreen nudge overlay */}
       {activeNudge && (
-        <NudgeAnimation
-          fromName={activeNudge.senderName}
-          onDismiss={() => setActiveNudge(null)}
-        />
+        <NudgeAnimation fromName={activeNudge.senderName} onDismiss={() => setActiveNudge(null)} />
+      )}
+
+      {activeReaction && (
+        <ReactionAnimation emoji={activeReaction} onDismiss={() => setActiveReaction(null)} />
       )}
 
       {/* Partner header */}
@@ -201,6 +217,21 @@ export function HomeScreen() {
           </View>
         )}
       </Animated.View>
+
+      {/* Reaction buttons — only when viewing a partner's drawing */}
+      {canReact && (
+        <View style={styles.reactionRow}>
+          {REACTION_EMOJIS.map((emoji) => (
+            <TouchableOpacity
+              key={emoji}
+              style={styles.reactionBtn}
+              onPress={() => handleReaction(emoji)}
+            >
+              <Text style={styles.reactionEmoji}>{emoji}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* Thinking of you */}
       <Animated.View style={{ transform: [{ scale: nudgeBtnAnim }], marginBottom: 12 }}>
@@ -274,7 +305,7 @@ const styles = StyleSheet.create({
     borderRadius:    24,
     justifyContent:  'center',
     alignItems:      'center',
-    marginBottom:    16,
+    marginBottom:    8,
     padding:         24,
     borderWidth:     1,
     borderColor:     COLORS.border,
@@ -295,18 +326,26 @@ const styles = StyleSheet.create({
     lineHeight: 28,
   },
   emptyHint:    { color: COLORS.textSecondary, fontSize: 13, marginTop: 4 },
+  reactionRow: {
+    flexDirection:  'row',
+    justifyContent: 'center',
+    gap:            12,
+    marginBottom:   10,
+  },
+  reactionBtn:   { padding: 6 },
+  reactionEmoji: { fontSize: 28 },
   nudgeBtn: {
     backgroundColor: COLORS.accent,
     borderRadius:    16,
     paddingVertical: 16,
     alignItems:      'center',
+    marginBottom:    12,
   },
   nudgeBtnSent: {
     backgroundColor: COLORS.accentDim,
     opacity:         0.7,
   },
   nudgeBtnText: { color: COLORS.white, fontSize: 17, fontWeight: '700' },
-  composeRow:   { flexDirection: 'row', gap: 12 },
   composeBtn: {
     flex:            1,
     borderRadius:    16,
@@ -314,7 +353,6 @@ const styles = StyleSheet.create({
     alignItems:      'center',
     gap:             6,
   },
-  composeBtnText: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.accent },
   composeBtnDraw: { backgroundColor: COLORS.accent },
   composeBtnIcon: { fontSize: 28 },
   composeBtnLabel:{ color: COLORS.text, fontWeight: '700', fontSize: 15 },
