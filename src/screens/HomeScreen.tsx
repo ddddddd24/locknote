@@ -197,7 +197,7 @@ export function HomeScreen() {
           <View style={styles.emptyState}>
             <Text style={styles.promptLabel}>today's prompt 🎨</Text>
             <Text style={styles.promptText}>{todayPrompt}</Text>
-            <Text style={styles.emptyHint}>Draw or write something for {partnerName}</Text>
+            <Text style={styles.emptyHint}>Draw something for {partnerName}</Text>
           </View>
         )}
       </Animated.View>
@@ -216,24 +216,14 @@ export function HomeScreen() {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Compose buttons */}
-      <View style={styles.composeRow}>
-        <TouchableOpacity
-          style={[styles.composeBtn, styles.composeBtnText]}
-          onPress={() => navigation.navigate('Compose', { mode: 'text' })}
-        >
-          <Text style={styles.composeBtnIcon}>✏️</Text>
-          <Text style={styles.composeBtnLabel}>Write</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.composeBtn, styles.composeBtnDraw]}
-          onPress={() => navigation.navigate('Compose', { mode: 'draw' })}
-        >
-          <Text style={styles.composeBtnIcon}>🎨</Text>
-          <Text style={styles.composeBtnLabel}>Draw</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Draw button */}
+      <TouchableOpacity
+        style={[styles.composeBtn, styles.composeBtnDraw]}
+        onPress={() => navigation.navigate('Compose', { mode: 'draw' })}
+      >
+        <Text style={styles.composeBtnIcon}>🎨</Text>
+        <Text style={styles.composeBtnLabel}>Draw something</Text>
+      </TouchableOpacity>
     </View>
   );
 }
