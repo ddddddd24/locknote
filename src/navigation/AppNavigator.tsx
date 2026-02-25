@@ -48,7 +48,7 @@ export function AppNavigator() {
             <Stack.Screen
               name="Home"
               component={HomeScreen}
-              options={{ title: '💌 LockNote', headerLeft: () => null }}
+              options={{ title: '💕 bubliboo', headerLeft: () => null }}
             />
             <Stack.Screen
               name="Compose"

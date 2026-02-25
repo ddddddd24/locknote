@@ -21,6 +21,7 @@ import { useApp }       from '../context/AppContext';
 import { sendMessage }  from '../services/messages';
 import { sendPushNotification } from '../services/notifications';
 import { DrawingCanvas } from '../components/DrawingCanvas';
+import { getTodayPrompt } from '../utils/dailyPrompts';
 import { COLORS }        from '../theme';
 import { RootStackParamList } from '../types';
 
@@ -91,7 +92,11 @@ export function ComposeScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.recipient}>To: {partnerName} 💌</Text>
+      <Text style={styles.recipient}>To: {partnerName} 💕</Text>
+
+      {mode === 'draw' && (
+        <Text style={styles.prompt}>✨ {getTodayPrompt()}</Text>
+      )}
 
       {mode === 'text' ? (
         <TextInput
@@ -136,7 +141,13 @@ export function ComposeScreen() {
 
 const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: COLORS.background, padding: 16 },
-  recipient:    { color: COLORS.textSecondary, fontSize: 13, marginBottom: 12 },
+  recipient:    { color: COLORS.textSecondary, fontSize: 13, marginBottom: 6 },
+  prompt: {
+    color:        COLORS.accent,
+    fontSize:     13,
+    fontStyle:    'italic',
+    marginBottom: 10,
+  },
   textArea: {
     flex:             1,
     backgroundColor:  COLORS.surface,
