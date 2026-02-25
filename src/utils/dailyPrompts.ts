@@ -36,9 +36,18 @@ const PROMPTS = [
   'Draw what home feels like',
 ];
 
-export function getTodayPrompt(): string {
+function promptForDay(date: Date): string {
   const origin = new Date('2026-01-01').setHours(0, 0, 0, 0);
-  const today  = new Date().setHours(0, 0, 0, 0);
-  const days   = Math.floor((today - origin) / 86_400_000);
+  const day    = new Date(date).setHours(0, 0, 0, 0);
+  const days   = Math.floor((day - origin) / 86_400_000);
   return PROMPTS[((days % PROMPTS.length) + PROMPTS.length) % PROMPTS.length];
+}
+
+export function getTodayPrompt(): string {
+  return promptForDay(new Date());
+}
+
+/** Return the prompt that was shown on any past date. */
+export function getPromptForDate(date: Date): string {
+  return promptForDay(date);
 }

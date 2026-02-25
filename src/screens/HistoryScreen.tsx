@@ -1,41 +1,104 @@
 /**
- * HistoryScreen — scrollable gallery of all notes and drawings exchanged.
+ * HistoryScreen — all notes and drawings grouped by day.
+ * Long-press any card to delete it.
  */
 
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
+  Alert,
+  SectionList,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
-import { useApp }               from '../context/AppContext';
-import { subscribeToHistory }   from '../services/messages';
-import { DrawingPreview }       from '../components/DrawingPreview';
-import { Message }              from '../types';
-import { COLORS }               from '../theme';
+import { useApp }                        from '../context/AppContext';
+import { subscribeToHistory, deleteMessage } from '../services/messages';
+import { DrawingPreview }                from '../components/DrawingPreview';
+import { getPromptForDate }              from '../utils/dailyPrompts';
+import { Message }                       from '../types';
+import { COLORS }                        from '../theme';
 
-function formatTime(ts: number): string {
-  const d = new Date(ts);
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - ts) / 86_400_000);
-  if (diffDays === 0) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7)  return d.toLocaleDateString([], { weekday: 'short' });
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function dayKey(ts: number): string {
+  return new Date(ts).toDateString(); // stable string per calendar day
 }
 
-function MessageCard({ msg, myId }: { msg: Message; myId: string }) {
+function formatSectionDate(dateStr: string): string {
+  const d   = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.floor(
+    (now.setHours(0,0,0,0) - d.setHours(0,0,0,0)) / 86_400_000,
+  );
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  return new Date(dateStr).toLocaleDateString([], {
+    weekday: 'short', month: 'short', day: 'numeric',
+  });
+}
+
+interface Section {
+  title:  string;   // formatted date label
+  prompt: string;   // prompt that day
+  data:   Message[];
+}
+
+function buildSections(messages: Message[]): Section[] {
+  const groups: Record<string, Message[]> = {};
+  for (const msg of messages) {
+    const key = dayKey(msg.timestamp);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(msg);
+  }
+  return Object.entries(groups)
+    .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime())
+    .map(([key, data]) => ({
+      title:  formatSectionDate(key),
+      prompt: getPromptForDate(new Date(key)),
+      data:   data.sort((a, b) => b.timestamp - a.timestamp),
+    }));
+}
+
+// ─── Message card ─────────────────────────────────────────────────────────────
+
+function MessageCard({
+  msg, myId, pairId,
+}: { msg: Message; myId: string; pairId: string }) {
   const isMine = msg.authorId === myId;
 
+  function confirmDelete() {
+    Alert.alert(
+      'Delete this note?',
+      'It will be removed for both of you.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteMessage(pairId, msg.id).catch(() =>
+            Alert.alert('Error', 'Could not delete. Try again.'),
+          ),
+        },
+      ],
+    );
+  }
+
   return (
-    <View style={[styles.card, isMine ? styles.cardMine : styles.cardTheirs]}>
+    <TouchableOpacity
+      style={[styles.card, isMine ? styles.cardMine : styles.cardTheirs]}
+      onLongPress={confirmDelete}
+      activeOpacity={0.85}
+      delayLongPress={400}
+    >
       <View style={styles.cardHeader}>
         <Text style={[styles.authorName, isMine && styles.authorMine]}>
           {isMine ? 'You' : msg.authorName}
         </Text>
-        <Text style={styles.timestamp}>{formatTime(msg.timestamp)}</Text>
+        <Text style={styles.timestamp}>
+          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </Text>
       </View>
 
       {msg.type === 'drawing' ? (
@@ -43,19 +106,21 @@ function MessageCard({ msg, myId }: { msg: Message; myId: string }) {
       ) : (
         <Text style={styles.textContent}>{msg.content}</Text>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
 export function HistoryScreen() {
   const { currentUser } = useApp();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
     if (!currentUser?.pairId) return;
     const unsub = subscribeToHistory(currentUser.pairId, (msgs) => {
-      setMessages(msgs);
+      setSections(buildSections(msgs));
       setLoading(false);
     });
     return unsub;
@@ -69,7 +134,7 @@ export function HistoryScreen() {
     );
   }
 
-  if (messages.length === 0) {
+  if (sections.length === 0) {
     return (
       <View style={styles.center}>
         <Text style={styles.emptyIcon}>📭</Text>
@@ -80,29 +145,60 @@ export function HistoryScreen() {
   }
 
   return (
-    <FlatList
-      data={messages}
-      keyExtractor={(m) => m.id}
-      renderItem={({ item }) => (
-        <MessageCard msg={item} myId={currentUser?.id ?? ''} />
-      )}
-      contentContainerStyle={styles.list}
+    <SectionList
       style={styles.container}
+      contentContainerStyle={styles.list}
+      sections={sections}
+      keyExtractor={(item) => item.id}
+      renderSectionHeader={({ section }) => (
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionDate}>{section.title}</Text>
+          <Text style={styles.sectionPrompt}>✨ {section.prompt}</Text>
+        </View>
+      )}
+      renderItem={({ item }) => (
+        <MessageCard
+          msg={item}
+          myId={currentUser?.id ?? ''}
+          pairId={currentUser?.pairId ?? ''}
+        />
+      )}
+      stickySectionHeadersEnabled={false}
     />
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container:   { flex: 1, backgroundColor: COLORS.background },
-  list:        { padding: 16, gap: 12 },
-  center:      { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background, gap: 8 },
-  emptyIcon:   { fontSize: 48 },
-  emptyText:   { color: COLORS.text, fontSize: 18, fontWeight: '700' },
-  emptyHint:   { color: COLORS.textSecondary, fontSize: 14 },
+  container:    { flex: 1, backgroundColor: COLORS.background },
+  list:         { padding: 16, paddingBottom: 32 },
+  center:       { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background, gap: 8 },
+  emptyIcon:    { fontSize: 48 },
+  emptyText:    { color: COLORS.text, fontSize: 18, fontWeight: '700' },
+  emptyHint:    { color: COLORS.textSecondary, fontSize: 14 },
+
+  sectionHeader: {
+    marginTop:    20,
+    marginBottom: 10,
+    gap:          4,
+  },
+  sectionDate: {
+    color:      COLORS.text,
+    fontWeight: '700',
+    fontSize:   15,
+  },
+  sectionPrompt: {
+    color:     COLORS.accent,
+    fontSize:  12,
+    fontStyle: 'italic',
+  },
+
   card: {
     backgroundColor: COLORS.surface,
     borderRadius:    16,
     padding:         16,
+    marginBottom:    10,
     borderWidth:     1,
     borderColor:     COLORS.border,
     gap:             10,

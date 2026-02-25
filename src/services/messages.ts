@@ -11,6 +11,7 @@ import {
   ref,
   set,
   push,
+  remove,
   onValue,
   off,
   Unsubscribe,
@@ -125,6 +126,11 @@ export function subscribeToLatestMessage(
 export async function markLatestRead(pairId: string): Promise<void> {
   // A real implementation would look up the latest history key and update it.
   // For the MVP we omit this — the UI treats all received messages as read on view.
+}
+
+/** Delete a single message from history. */
+export async function deleteMessage(pairId: string, messageId: string): Promise<void> {
+  await remove(ref(db, `messages/${pairId}/history/${messageId}`));
 }
 
 /**
