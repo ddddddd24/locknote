@@ -58,7 +58,7 @@ export function LockNoteWidget({
         }}
       >
         <TextWidget
-          text="💌 LockNote"
+          text="💕 bubliboo"
           style={{
             color:      '#e94560',
             fontSize:   13,

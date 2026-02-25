@@ -173,6 +173,30 @@ export function watchForPairAccepted(
   });
 }
 
+/**
+ * Create a demo pair for solo testing — pairs the user with a static
+ * "Demo" account so you can explore the app without a second device.
+ */
+export async function startDemoPair(myUserId: string): Promise<string> {
+  const demoId = 'DEMO00000000';
+  await set(ref(db, `users/${demoId}`), {
+    name:      'Demo 💕',
+    pairId:    null,
+    fcmToken:  null,
+    updatedAt: Date.now(),
+  });
+
+  const pairId = `${myUserId}_DEMO`;
+  const pair: Pair = { id: pairId, user1: myUserId, user2: demoId, createdAt: Date.now() };
+
+  await set(ref(db, `pairs/${pairId}`), pair);
+  await set(ref(db, `users/${myUserId}/pairId`), pairId);
+  await set(ref(db, `users/${demoId}/pairId`), pairId);
+  await AsyncStorage.setItem(STORAGE_KEYS.PAIR_ID, pairId);
+
+  return pairId;
+}
+
 /** Retrieve the partner's user profile from Firebase. */
 export async function getPartnerProfile(pairId: string, myUserId: string): Promise<UserProfile | null> {
   const pairSnap = await get(ref(db, `pairs/${pairId}`));

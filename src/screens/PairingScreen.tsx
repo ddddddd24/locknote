@@ -19,7 +19,7 @@ import {
   View,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { createPairCode, joinWithCode, watchForPairAccepted } from '../services/auth';
+import { createPairCode, joinWithCode, watchForPairAccepted, startDemoPair } from '../services/auth';
 import { COLORS } from '../theme';
 
 type Step = 'name' | 'choose' | 'create' | 'join';
@@ -90,6 +90,19 @@ export function PairingScreen() {
     }
   };
 
+  const handleDemoMode = async () => {
+    if (!currentUser) return;
+    setIsLoading(true);
+    try {
+      const newPairId = await startDemoPair(currentUser.id);
+      await setPairId(newPairId);
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'Could not start demo mode.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleJoinCode = async () => {
     if (!currentUser) return;
     const trimmed = inputCode.trim().toUpperCase();
@@ -119,9 +132,9 @@ export function PairingScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.logo}>💌</Text>
-        <Text style={styles.title}>LockNote</Text>
-        <Text style={styles.subtitle}>Notes that live on your lock screen</Text>
+        <Text style={styles.logo}>💕</Text>
+        <Text style={styles.title}>bubliboo</Text>
+        <Text style={styles.subtitle}>just for the two of you</Text>
 
         {/* Step: Name */}
         {step === 'name' && (
@@ -157,6 +170,9 @@ export function PairingScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={styles.btnOutline} onPress={() => setStep('join')}>
               <Text style={styles.btnOutlineText}>Enter a code</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.btnGhost} onPress={handleDemoMode} disabled={isLoading}>
+              <Text style={styles.btnGhostText}>Test alone 🧪</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -251,6 +267,11 @@ const styles = StyleSheet.create({
     alignItems:      'center',
   },
   btnOutlineText: { color: COLORS.accent, fontSize: 16, fontWeight: '600' },
+  btnGhost: {
+    paddingVertical: 10,
+    alignItems:      'center',
+  },
+  btnGhostText: { color: COLORS.textSecondary, fontSize: 14 },
   codeDisplay: {
     fontSize:    48,
     fontWeight:  'bold',
