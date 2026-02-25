@@ -39,7 +39,9 @@ export function DrawingCanvas({ onPathsChange }: DrawingCanvasProps) {
   const [brushWidth,   setBrushWidth]   = useState(4);
 
   // Current in-progress path while finger is down.
-  const activePath = useRef<string>('');
+  const activePath  = useRef<string>('');
+  // Mirror of strokes state so gesture closures always see the latest value.
+  const strokesRef  = useRef<Stroke[]>([]);
 
   const serialise = useCallback((s: Stroke[]) => {
     onPathsChange(JSON.stringify(s));
@@ -55,19 +57,22 @@ export function DrawingCanvas({ onPathsChange }: DrawingCanvasProps) {
     .onUpdate((e) => {
       activePath.current += ` L${e.x.toFixed(1)},${e.y.toFixed(1)}`;
       // Force a re-render so the SVG shows the stroke in real time.
-      // We don't commit to `strokes` yet — allPaths merges activePath at render time.
       setStrokes((prev) => [...prev]);
     })
     .onEnd(() => {
       const finalPath = activePath.current;
       if (!finalPath) return;
-      setStrokes((prev) => {
-        const newStrokes = [...prev, { d: finalPath, color: activeColor, width: brushWidth }];
-        serialise(newStrokes);
-        return newStrokes;
-      });
       activePath.current = '';
+      // Build new strokes array and update both ref + state separately
+      // so we never call the parent setter inside a child updater (React 19).
+      const newStrokes = [...strokesRef.current, { d: finalPath, color: activeColor, width: brushWidth }];
+      strokesRef.current = newStrokes;
+      setStrokes(newStrokes);
+      serialise(newStrokes);
     });
+
+  // Keep ref in sync on every render.
+  strokesRef.current = strokes;
 
   // For live preview, merge committed strokes + current active path.
   const allPaths: Stroke[] = activePath.current
@@ -75,17 +80,17 @@ export function DrawingCanvas({ onPathsChange }: DrawingCanvasProps) {
     : strokes;
 
   const handleClear = () => {
-    setStrokes([]);
     activePath.current = '';
+    strokesRef.current = [];
+    setStrokes([]);
     onPathsChange('');
   };
 
   const handleUndo = () => {
-    setStrokes((prev) => {
-      const next = prev.slice(0, -1);
-      serialise(next);
-      return next;
-    });
+    const next = strokesRef.current.slice(0, -1);
+    strokesRef.current = next;
+    setStrokes(next);
+    serialise(next);
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
