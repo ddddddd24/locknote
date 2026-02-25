@@ -37,6 +37,7 @@ export interface UserProfile {
   name: string;
   pairId: string | null;
   fcmToken: string | null;
+  avatarBase64: string | null;
 }
 
 /** Temporary record stored at /pairCodes/{code} until the partner joins. */
@@ -62,4 +63,5 @@ export type RootStackParamList = {
   Home: undefined;
   Compose: { mode: 'text' | 'draw' };
   History: undefined;
+  Profile: undefined;
 };

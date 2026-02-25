@@ -29,6 +29,7 @@ const STORAGE_KEYS = {
   USER_ID:   'locknote_user_id',
   USER_NAME: 'locknote_user_name',
   PAIR_ID:   'locknote_pair_id',
+  AVATAR:    'locknote_avatar',
 } as const;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,17 +67,34 @@ export async function getOrCreateUser(name: string): Promise<UserProfile> {
     updatedAt: Date.now(),
   });
 
-  return { id: userId, name, pairId, fcmToken: null };
+  return { id: userId, name, pairId, fcmToken: null, avatarBase64: null };
 }
 
 /** Read the stored user from AsyncStorage (returns null on first launch). */
-export async function loadStoredUser(): Promise<{ id: string; name: string; pairId: string | null } | null> {
-  const userId = await AsyncStorage.getItem(STORAGE_KEYS.USER_ID);
-  const name   = await AsyncStorage.getItem(STORAGE_KEYS.USER_NAME);
-  const pairId = await AsyncStorage.getItem(STORAGE_KEYS.PAIR_ID);
+export async function loadStoredUser(): Promise<{ id: string; name: string; pairId: string | null; avatarBase64: string | null } | null> {
+  const userId      = await AsyncStorage.getItem(STORAGE_KEYS.USER_ID);
+  const name        = await AsyncStorage.getItem(STORAGE_KEYS.USER_NAME);
+  const pairId      = await AsyncStorage.getItem(STORAGE_KEYS.PAIR_ID);
+  const avatarBase64 = await AsyncStorage.getItem(STORAGE_KEYS.AVATAR);
 
   if (!userId || !name) return null;
-  return { id: userId, name, pairId };
+  return { id: userId, name, pairId, avatarBase64 };
+}
+
+/** Update name and/or avatar for the current user in Firebase + AsyncStorage. */
+export async function updateUserProfile(
+  userId: string,
+  name: string,
+  avatarBase64: string | null,
+): Promise<void> {
+  await AsyncStorage.setItem(STORAGE_KEYS.USER_NAME, name);
+  if (avatarBase64 !== null) {
+    await AsyncStorage.setItem(STORAGE_KEYS.AVATAR, avatarBase64);
+  } else {
+    await AsyncStorage.removeItem(STORAGE_KEYS.AVATAR);
+  }
+  await set(ref(db, `users/${userId}/name`), name);
+  await set(ref(db, `users/${userId}/avatarBase64`), avatarBase64);
 }
 
 /** Persist the FCM token to Firebase so the partner can send us notifications. */
@@ -208,5 +226,6 @@ export async function getPartnerProfile(pairId: string, myUserId: string): Promi
   const userSnap = await get(ref(db, `users/${partnerId}`));
   if (!userSnap.exists()) return null;
 
-  return { id: partnerId, ...userSnap.val() };
+  const data = userSnap.val();
+  return { id: partnerId, name: data.name, pairId: data.pairId ?? null, fcmToken: data.fcmToken ?? null, avatarBase64: data.avatarBase64 ?? null };
 }

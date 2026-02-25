@@ -12,7 +12,7 @@ import React, {
   useState,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { loadStoredUser, getOrCreateUser, getPartnerProfile } from '../services/auth';
+import { loadStoredUser, getOrCreateUser, getPartnerProfile, updateUserProfile } from '../services/auth';
 import { UserProfile } from '../types';
 
 // ─── Shape ───────────────────────────────────────────────────────────────────
@@ -32,6 +32,8 @@ interface AppContextValue {
   refreshPartner: () => Promise<void>;
   /** Clear the stored pairId so the user returns to the pairing screen. */
   unpair: () => Promise<void>;
+  /** Save a new display name and/or avatar for the current user. */
+  updateProfile: (name: string, avatarBase64: string | null) => Promise<void>;
 }
 
 // ─── Context ─────────────────────────────────────────────────────────────────
@@ -57,7 +59,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         const stored = await loadStoredUser();
         if (stored) {
-          setCurrentUser({ id: stored.id, name: stored.name, pairId: stored.pairId, fcmToken: null });
+          setCurrentUser({
+            id:           stored.id,
+            name:         stored.name,
+            pairId:       stored.pairId,
+            fcmToken:     null,
+            avatarBase64: stored.avatarBase64,
+          });
         }
       } finally {
         setIsLoading(false);
@@ -96,9 +104,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser((prev: UserProfile | null) => prev ? { ...prev, pairId: null } : null);
   }, []);
 
+  const updateProfile = useCallback(async (name: string, avatarBase64: string | null) => {
+    if (!currentUser?.id) return;
+    await updateUserProfile(currentUser.id, name, avatarBase64);
+    setCurrentUser((prev: UserProfile | null) => prev ? { ...prev, name, avatarBase64 } : null);
+  }, [currentUser?.id]);
+
   const value = useMemo<AppContextValue>(
-    () => ({ currentUser, partner, isLoading, login, setPairId, refreshPartner, unpair }),
-    [currentUser, partner, isLoading, login, setPairId, refreshPartner, unpair],
+    () => ({ currentUser, partner, isLoading, login, setPairId, refreshPartner, unpair, updateProfile }),
+    [currentUser, partner, isLoading, login, setPairId, refreshPartner, unpair, updateProfile],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

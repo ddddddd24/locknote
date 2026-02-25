@@ -4,8 +4,9 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
+  Alert,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -32,7 +33,7 @@ const NUDGE_COOLDOWN_MS = 30_000;
 
 export function HomeScreen() {
   const navigation              = useNavigation<NavProp>();
-  const { currentUser, partner, refreshPartner, unpair } = useApp();
+  const { currentUser, partner, refreshPartner } = useApp();
   const [latestMsg,      setLatestMsg]      = useState<LatestMessage | null>(null);
   const [activeNudge,    setActiveNudge]    = useState<Nudge | null>(null);
   const [activeReaction, setActiveReaction] = useState<string | null>(null);
@@ -56,25 +57,13 @@ export function HomeScreen() {
           <TouchableOpacity onPress={() => navigation.navigate('History')} style={{ padding: 4 }}>
             <Text style={{ fontSize: 20 }}>📖</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() =>
-              Alert.alert(
-                'Unpair',
-                'This will disconnect you from your partner. You can pair again with a new code.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Unpair', style: 'destructive', onPress: unpair },
-                ],
-              )
-            }
-            style={{ padding: 4 }}
-          >
+          <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ padding: 4 }}>
             <Text style={{ fontSize: 20 }}>⚙️</Text>
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [navigation, unpair]);
+  }, [navigation]);
 
   // ── Subscriptions ─────────────────────────────────────────────────────────
 
@@ -97,7 +86,6 @@ export function HomeScreen() {
     });
 
     const unsubReaction = subscribeToReactions(currentUser.pairId, (r: Reaction) => {
-      // Show animation only when partner reacts to our drawing (we sent the latest msg).
       if (r.senderId !== currentUser.id && r.timestamp > mountTime) {
         setActiveReaction(r.emoji);
       }
@@ -163,8 +151,7 @@ export function HomeScreen() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const partnerName = partner?.name ?? 'your partner';
-  // Show reaction buttons when there's a received drawing to react to.
-  const canReact = !!latestMsg && latestMsg.authorId !== currentUser?.id;
+  const canReact    = !!latestMsg && latestMsg.authorId !== currentUser?.id;
 
   return (
     <View style={styles.container}>
@@ -179,9 +166,16 @@ export function HomeScreen() {
 
       {/* Partner header */}
       <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{partnerName[0]?.toUpperCase() ?? '?'}</Text>
-        </View>
+        {partner?.avatarBase64 ? (
+          <Image
+            source={{ uri: `data:image/jpeg;base64,${partner.avatarBase64}` }}
+            style={styles.avatarImg}
+          />
+        ) : (
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{partnerName[0]?.toUpperCase() ?? '?'}</Text>
+          </View>
+        )}
         <View style={styles.headerText}>
           <Text style={styles.partnerLabel}>Connected with</Text>
           <Text style={styles.partnerName}>
@@ -247,13 +241,14 @@ export function HomeScreen() {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Draw button */}
+      {/* Draw button — fixed height, not flex */}
       <TouchableOpacity
-        style={[styles.composeBtn, styles.composeBtnDraw]}
+        style={styles.drawBtn}
         onPress={() => navigation.navigate('Compose', { mode: 'draw' })}
+        activeOpacity={0.85}
       >
-        <Text style={styles.composeBtnIcon}>🎨</Text>
-        <Text style={styles.composeBtnLabel}>Draw something</Text>
+        <Text style={styles.drawBtnIcon}>🎨</Text>
+        <Text style={styles.drawBtnLabel}>Draw something</Text>
       </TouchableOpacity>
     </View>
   );
@@ -277,6 +272,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentDim,
     justifyContent:  'center',
     alignItems:      'center',
+  },
+  avatarImg: {
+    width:        44,
+    height:       44,
+    borderRadius: 22,
   },
   avatarText:   { color: COLORS.white, fontWeight: 'bold', fontSize: 18 },
   headerText:   { flex: 1 },
@@ -337,23 +337,25 @@ const styles = StyleSheet.create({
   nudgeBtn: {
     backgroundColor: COLORS.accent,
     borderRadius:    16,
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems:      'center',
-    marginBottom:    12,
+    marginBottom:    10,
   },
   nudgeBtnSent: {
     backgroundColor: COLORS.accentDim,
     opacity:         0.7,
   },
-  nudgeBtnText: { color: COLORS.white, fontSize: 17, fontWeight: '700' },
-  composeBtn: {
-    flex:            1,
+  nudgeBtnText: { color: COLORS.white, fontSize: 16, fontWeight: '700' },
+  drawBtn: {
+    flexDirection:   'row',
+    backgroundColor: COLORS.accent,
     borderRadius:    16,
-    paddingVertical: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
     alignItems:      'center',
-    gap:             6,
+    justifyContent:  'center',
+    gap:             8,
   },
-  composeBtnDraw: { backgroundColor: COLORS.accent },
-  composeBtnIcon: { fontSize: 28 },
-  composeBtnLabel:{ color: COLORS.text, fontWeight: '700', fontSize: 15 },
+  drawBtnIcon:  { fontSize: 22 },
+  drawBtnLabel: { color: COLORS.white, fontWeight: '700', fontSize: 16 },
 });

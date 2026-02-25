@@ -8,6 +8,7 @@ import { PairingScreen } from '../screens/PairingScreen';
 import { HomeScreen }    from '../screens/HomeScreen';
 import { ComposeScreen } from '../screens/ComposeScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
+import { ProfileScreen } from '../screens/ProfileScreen';
 import { COLORS }        from '../theme';
 import { RootStackParamList } from '../types';
 
@@ -62,6 +63,11 @@ export function AppNavigator() {
               name="History"
               component={HistoryScreen}
               options={{ title: 'Our notes 📖' }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
+              options={{ title: 'Your profile' }}
             />
           </>
         )}
