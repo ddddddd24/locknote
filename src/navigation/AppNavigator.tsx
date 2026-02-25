@@ -7,6 +7,7 @@ import { useApp } from '../context/AppContext';
 import { PairingScreen } from '../screens/PairingScreen';
 import { HomeScreen }    from '../screens/HomeScreen';
 import { ComposeScreen } from '../screens/ComposeScreen';
+import { HistoryScreen } from '../screens/HistoryScreen';
 import { COLORS }        from '../theme';
 import { RootStackParamList } from '../types';
 
@@ -56,6 +57,11 @@ export function AppNavigator() {
               options={({ route }) => ({
                 title: route.params.mode === 'draw' ? 'Draw a note' : 'Write a note',
               })}
+            />
+            <Stack.Screen
+              name="History"
+              component={HistoryScreen}
+              options={{ title: 'Our notes 📖' }}
             />
           </>
         )}

@@ -1,9 +1,10 @@
 /**
  * HomeScreen — main screen for bubliboo.
- * Shows the latest note, a daily drawing prompt, and the "thinking of you" button.
+ * Shows the latest note, a daily drawing prompt, the "thinking of you" button,
+ * mood picker, and a link to message history.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -18,6 +19,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { useApp }                   from '../context/AppContext';
 import { subscribeToLatestMessage } from '../services/messages';
 import { sendNudge, subscribeToNudges, Nudge } from '../services/nudge';
+import { setMood, subscribeMood, MOOD_OPTIONS } from '../services/mood';
 import { MessageDisplay }           from '../components/MessageDisplay';
 import { NudgeAnimation }           from '../components/NudgeAnimation';
 import { getTodayPrompt }           from '../utils/dailyPrompts';
@@ -26,22 +28,38 @@ import { COLORS } from '../theme';
 
 type NavProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
-const NUDGE_COOLDOWN_MS = 30_000; // 30 s between nudges
+const NUDGE_COOLDOWN_MS = 30_000;
 
 export function HomeScreen() {
   const navigation              = useNavigation<NavProp>();
   const { currentUser, partner, refreshPartner } = useApp();
-  const [latestMsg, setLatestMsg]   = useState<LatestMessage | null>(null);
+  const [latestMsg,   setLatestMsg]   = useState<LatestMessage | null>(null);
   const [activeNudge, setActiveNudge] = useState<Nudge | null>(null);
-  const [nudgeSent,  setNudgeSent]  = useState(false);
+  const [nudgeSent,   setNudgeSent]   = useState(false);
+  const [partnerMood, setPartnerMood] = useState<string | null>(null);
+  const [myMood,      setMyMood]      = useState<string | null>(null);
 
-  // Ignore nudges that were already in Firebase before the screen mounted.
-  const mountTime   = useRef(Date.now()).current;
-  const pulseAnim   = useRef(new Animated.Value(1)).current;
+  const mountTime    = useRef(Date.now()).current;
+  const pulseAnim    = useRef(new Animated.Value(1)).current;
   const nudgeBtnAnim = useRef(new Animated.Value(1)).current;
-  const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cooldownRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const todayPrompt = getTodayPrompt();
+
+  // ── Header right: history button ─────────────────────────────────────────
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('History')}
+          style={{ marginRight: 16 }}
+        >
+          <Text style={{ fontSize: 22 }}>📖</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   // ── Subscriptions ─────────────────────────────────────────────────────────
 
@@ -58,7 +76,6 @@ export function HomeScreen() {
     });
 
     const unsubNudge = subscribeToNudges(currentUser.pairId, (nudge) => {
-      // Only show if it arrived after we opened the screen and wasn't sent by us.
       if (nudge.senderId !== currentUser.id && nudge.timestamp > mountTime) {
         setActiveNudge(nudge);
       }
@@ -67,9 +84,19 @@ export function HomeScreen() {
     return () => { unsubMsg(); unsubNudge(); };
   }, [currentUser?.pairId, currentUser?.id]);
 
+  // Subscribe to partner's mood.
   useEffect(() => {
-    refreshPartner();
-  }, []);
+    if (!partner?.id) return;
+    return subscribeMood(partner.id, setPartnerMood);
+  }, [partner?.id]);
+
+  // Subscribe to own mood (to restore on reopen).
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    return subscribeMood(currentUser.id, setMyMood);
+  }, [currentUser?.id]);
+
+  useEffect(() => { refreshPartner(); }, []);
 
   useEffect(() => {
     return () => { if (cooldownRef.current) clearTimeout(cooldownRef.current); };
@@ -86,13 +113,10 @@ export function HomeScreen() {
 
   async function handleNudge() {
     if (nudgeSent || !currentUser?.pairId) return;
-
-    // Animate the button
     Animated.sequence([
       Animated.spring(nudgeBtnAnim, { toValue: 0.92, useNativeDriver: true, speed: 50 }),
       Animated.spring(nudgeBtnAnim, { toValue: 1,    useNativeDriver: true, speed: 20 }),
     ]).start();
-
     try {
       await sendNudge(currentUser.pairId, currentUser.id, currentUser.name);
       setNudgeSent(true);
@@ -100,6 +124,12 @@ export function HomeScreen() {
     } catch {
       Alert.alert('Could not send', 'Check your connection and try again.');
     }
+  }
+
+  async function handleMoodTap(emoji: string) {
+    if (!currentUser?.id) return;
+    const next = myMood === emoji ? null : emoji; // tap same emoji to clear
+    await setMood(currentUser.id, next);
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -124,9 +154,25 @@ export function HomeScreen() {
         </View>
         <View style={styles.headerText}>
           <Text style={styles.partnerLabel}>Connected with</Text>
-          <Text style={styles.partnerName}>{partnerName}</Text>
+          <Text style={styles.partnerName}>
+            {partnerName}{partnerMood ? `  ${partnerMood}` : ''}
+          </Text>
         </View>
         <View style={styles.onlineDot} />
+      </View>
+
+      {/* Mood picker */}
+      <View style={styles.moodRow}>
+        <Text style={styles.moodLabel}>you:</Text>
+        {MOOD_OPTIONS.map((emoji) => (
+          <TouchableOpacity
+            key={emoji}
+            onPress={() => handleMoodTap(emoji)}
+            style={[styles.moodBtn, myMood === emoji && styles.moodBtnActive]}
+          >
+            <Text style={styles.moodEmoji}>{emoji}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Message display */}
@@ -184,7 +230,7 @@ const styles = StyleSheet.create({
     flexDirection:   'row',
     alignItems:      'center',
     gap:             12,
-    marginBottom:    16,
+    marginBottom:    8,
     backgroundColor: COLORS.surface,
     borderRadius:    16,
     padding:         16,
@@ -207,6 +253,17 @@ const styles = StyleSheet.create({
     borderRadius:    5,
     backgroundColor: COLORS.success,
   },
+  moodRow: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    gap:            4,
+    marginBottom:   12,
+    paddingHorizontal: 4,
+  },
+  moodLabel:    { color: COLORS.textSecondary, fontSize: 12, marginRight: 4 },
+  moodBtn:      { padding: 4, borderRadius: 8 },
+  moodBtnActive: { backgroundColor: COLORS.surfaceHigh },
+  moodEmoji:    { fontSize: 20 },
   messageArea: {
     flex:            1,
     backgroundColor: COLORS.surface,

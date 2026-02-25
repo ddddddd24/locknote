@@ -61,4 +61,5 @@ export type RootStackParamList = {
   Pairing: undefined;
   Home: undefined;
   Compose: { mode: 'text' | 'draw' };
+  History: undefined;
 };

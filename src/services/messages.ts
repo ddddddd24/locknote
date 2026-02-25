@@ -126,3 +126,20 @@ export async function markLatestRead(pairId: string): Promise<void> {
   // A real implementation would look up the latest history key and update it.
   // For the MVP we omit this — the UI treats all received messages as read on view.
 }
+
+/**
+ * Subscribe to the full message history for a pair, sorted newest-first.
+ */
+export function subscribeToHistory(
+  pairId: string,
+  onMessages: (messages: Message[]) => void,
+): Unsubscribe {
+  const historyRef = ref(db, `messages/${pairId}/history`);
+  onValue(historyRef, (snap) => {
+    if (!snap.exists()) { onMessages([]); return; }
+    const msgs = Object.values(snap.val() as Record<string, Message>);
+    msgs.sort((a, b) => b.timestamp - a.timestamp);
+    onMessages(msgs);
+  });
+  return () => off(historyRef);
+}
