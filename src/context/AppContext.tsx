@@ -30,6 +30,8 @@ interface AppContextValue {
   setPairId:    (pairId: string) => Promise<void>;
   /** Refresh partner info from Firebase. */
   refreshPartner: () => Promise<void>;
+  /** Clear the stored pairId so the user returns to the pairing screen. */
+  unpair: () => Promise<void>;
 }
 
 // ─── Context ─────────────────────────────────────────────────────────────────
@@ -88,9 +90,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPartner(p);
   }, [currentUser?.pairId, currentUser?.id]);
 
+  const unpair = useCallback(async () => {
+    await AsyncStorage.removeItem('locknote_pair_id');
+    setPartner(null);
+    setCurrentUser((prev: UserProfile | null) => prev ? { ...prev, pairId: null } : null);
+  }, []);
+
   const value = useMemo<AppContextValue>(
-    () => ({ currentUser, partner, isLoading, login, setPairId, refreshPartner }),
-    [currentUser, partner, isLoading, login, setPairId, refreshPartner],
+    () => ({ currentUser, partner, isLoading, login, setPairId, refreshPartner, unpair }),
+    [currentUser, partner, isLoading, login, setPairId, refreshPartner, unpair],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

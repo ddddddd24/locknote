@@ -32,7 +32,7 @@ const NUDGE_COOLDOWN_MS = 30_000;
 
 export function HomeScreen() {
   const navigation              = useNavigation<NavProp>();
-  const { currentUser, partner, refreshPartner } = useApp();
+  const { currentUser, partner, refreshPartner, unpair } = useApp();
   const [latestMsg,   setLatestMsg]   = useState<LatestMessage | null>(null);
   const [activeNudge, setActiveNudge] = useState<Nudge | null>(null);
   const [nudgeSent,   setNudgeSent]   = useState(false);
@@ -51,15 +51,29 @@ export function HomeScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity
-          onPress={() => navigation.navigate('History')}
-          style={{ marginRight: 16 }}
-        >
-          <Text style={{ fontSize: 22 }}>📖</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 4, marginRight: 12 }}>
+          <TouchableOpacity onPress={() => navigation.navigate('History')} style={{ padding: 4 }}>
+            <Text style={{ fontSize: 20 }}>📖</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() =>
+              Alert.alert(
+                'Unpair',
+                'This will disconnect you from your partner. You can pair again with a new code.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Unpair', style: 'destructive', onPress: unpair },
+                ],
+              )
+            }
+            style={{ padding: 4 }}
+          >
+            <Text style={{ fontSize: 20 }}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
       ),
     });
-  }, [navigation]);
+  }, [navigation, unpair]);
 
   // ── Subscriptions ─────────────────────────────────────────────────────────
 
