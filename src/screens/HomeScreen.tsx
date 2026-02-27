@@ -241,15 +241,26 @@ export function HomeScreen() {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Draw button — fixed height, not flex */}
-      <TouchableOpacity
-        style={styles.drawBtn}
-        onPress={() => navigation.navigate('Compose', { mode: 'draw' })}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.drawBtnIcon}>🎨</Text>
-        <Text style={styles.drawBtnLabel}>Draw something</Text>
-      </TouchableOpacity>
+      {/* Bottom action row */}
+      <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.actionBtnDoodle]}
+          onPress={() => navigation.navigate('Compose', { mode: 'draw' })}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.actionBtnIcon}>🎨</Text>
+          <Text style={styles.actionBtnLabel}>Today's doodle</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.actionBtnHome]}
+          onPress={() => navigation.navigate('SayangHome')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.actionBtnIcon}>🏡</Text>
+          <Text style={styles.actionBtnLabel}>Sayang's home</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -346,16 +357,22 @@ const styles = StyleSheet.create({
     opacity:         0.7,
   },
   nudgeBtnText: { color: COLORS.white, fontSize: 16, fontWeight: '700' },
-  drawBtn: {
+  actionRow: {
+    flexDirection: 'row',
+    gap:           10,
+  },
+  actionBtn: {
+    flex:            1,
     flexDirection:   'row',
-    backgroundColor: COLORS.accent,
     borderRadius:    16,
     paddingVertical: 14,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     alignItems:      'center',
     justifyContent:  'center',
-    gap:             8,
+    gap:             6,
   },
-  drawBtnIcon:  { fontSize: 22 },
-  drawBtnLabel: { color: COLORS.white, fontWeight: '700', fontSize: 16 },
+  actionBtnDoodle: { backgroundColor: COLORS.accent },
+  actionBtnHome:   { backgroundColor: '#1a5c3a' },
+  actionBtnIcon:   { fontSize: 20 },
+  actionBtnLabel:  { color: COLORS.white, fontWeight: '700', fontSize: 14 },
 });

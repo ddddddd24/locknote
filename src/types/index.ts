@@ -64,4 +64,5 @@ export type RootStackParamList = {
   Compose: { mode: 'text' | 'draw' };
   History: undefined;
   Profile: undefined;
+  SayangHome: undefined;
 };

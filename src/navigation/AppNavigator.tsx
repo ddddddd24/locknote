@@ -9,6 +9,7 @@ import { HomeScreen }    from '../screens/HomeScreen';
 import { ComposeScreen } from '../screens/ComposeScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { SayangScreen }  from '../screens/SayangScreen';
 import { COLORS }        from '../theme';
 import { RootStackParamList } from '../types';
 
@@ -68,6 +69,11 @@ export function AppNavigator() {
               name="Profile"
               component={ProfileScreen}
               options={{ title: 'Your profile' }}
+            />
+            <Stack.Screen
+              name="SayangHome"
+              component={SayangScreen}
+              options={{ title: "Sayang's home 🏡" }}
             />
           </>
         )}
