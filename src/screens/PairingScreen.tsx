@@ -174,6 +174,9 @@ export function PairingScreen() {
             <TouchableOpacity style={styles.btnGhost} onPress={handleDemoMode} disabled={isLoading}>
               <Text style={styles.btnGhostText}>Test alone 🧪</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.btnGhost} onPress={() => setStep('name')}>
+              <Text style={styles.btnGhostText}>← Change name</Text>
+            </TouchableOpacity>
           </View>
         )}
 

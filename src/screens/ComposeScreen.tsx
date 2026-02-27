@@ -18,7 +18,7 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
 import { useApp }       from '../context/AppContext';
-import { sendMessage }  from '../services/messages';
+import { sendMessage, recordDoodleSent }  from '../services/messages';
 import { sendPushNotification } from '../services/notifications';
 import { DrawingCanvas } from '../components/DrawingCanvas';
 import { getTodayPrompt } from '../utils/dailyPrompts';
@@ -74,6 +74,9 @@ export function ComposeScreen() {
         });
       }
 
+      if (mode === 'draw' && currentUser?.pairId) {
+        await recordDoodleSent(currentUser.pairId, currentUser.id);
+      }
       navigation.goBack();
     } catch (e: any) {
       Alert.alert('Send failed', e.message ?? 'Please check your connection and try again.');

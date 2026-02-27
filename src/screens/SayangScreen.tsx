@@ -22,12 +22,12 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Svg, { Line, Rect } from 'react-native-svg';
 
 import { useApp }                               from '../context/AppContext';
-import { clearCanvas, subscribeLiveCanvas, updatePixels } from '../services/liveCanvas';
+import { clearCanvas, subscribeLiveCanvas, updatePixels, updateLastActivity } from '../services/liveCanvas';
 import { COLORS }                               from '../theme';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const GRID   = 24;                    // 24×24 pixel grid
+const GRID   = 32;                    // 32×32 pixel grid
 const FLUSH  = 120;                   // ms between Firebase batch writes
 
 /** 32-colour pixel-art palette (4 rows × 8 colours). */
@@ -139,7 +139,10 @@ export function SayangScreen() {
       const batch = { ...pendingRef.current };
       pendingRef.current = {};
       if (Object.keys(batch).length > 0) {
-        try { await updatePixels(currentUser.pairId!, batch); } catch { /* silent */ }
+        try {
+          await updatePixels(currentUser.pairId!, batch);
+          await updateLastActivity(currentUser.pairId!, currentUser.id!);
+        } catch { /* silent */ }
       }
     }, FLUSH);
   }

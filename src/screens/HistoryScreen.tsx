@@ -1,6 +1,6 @@
 /**
  * HistoryScreen — all notes and drawings grouped by day.
- * Long-press any card to delete it.
+ * Long-press any card to delete. Tap ▶ to replay a drawing stroke-by-stroke.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -16,6 +16,7 @@ import {
 import { useApp }                        from '../context/AppContext';
 import { subscribeToHistory, deleteMessage } from '../services/messages';
 import { DrawingPreview }                from '../components/DrawingPreview';
+import { AnimatedDrawingReplay }         from '../components/AnimatedDrawingReplay';
 import { getPromptForDate }              from '../utils/dailyPrompts';
 import { Message }                       from '../types';
 import { COLORS }                        from '../theme';
@@ -23,7 +24,7 @@ import { COLORS }                        from '../theme';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function dayKey(ts: number): string {
-  return new Date(ts).toDateString(); // stable string per calendar day
+  return new Date(ts).toDateString();
 }
 
 function formatSectionDate(dateStr: string): string {
@@ -40,8 +41,8 @@ function formatSectionDate(dateStr: string): string {
 }
 
 interface Section {
-  title:  string;   // formatted date label
-  prompt: string;   // prompt that day
+  title:  string;
+  prompt: string;
   data:   Message[];
 }
 
@@ -66,7 +67,8 @@ function buildSections(messages: Message[]): Section[] {
 function MessageCard({
   msg, myId, pairId,
 }: { msg: Message; myId: string; pairId: string }) {
-  const isMine = msg.authorId === myId;
+  const isMine  = msg.authorId === myId;
+  const [replaying, setReplaying] = useState(false);
 
   function confirmDelete() {
     Alert.alert(
@@ -89,7 +91,7 @@ function MessageCard({
     <TouchableOpacity
       style={[styles.card, isMine ? styles.cardMine : styles.cardTheirs]}
       onLongPress={confirmDelete}
-      activeOpacity={0.85}
+      activeOpacity={0.92}
       delayLongPress={400}
     >
       <View style={styles.cardHeader}>
@@ -102,7 +104,24 @@ function MessageCard({
       </View>
 
       {msg.type === 'drawing' ? (
-        <DrawingPreview serialised={msg.content} style={styles.drawing} />
+        <>
+          {replaying ? (
+            <AnimatedDrawingReplay
+              serialised={msg.content}
+              containerStyle={styles.drawingContainer}
+            />
+          ) : (
+            <DrawingPreview serialised={msg.content} style={styles.drawing} />
+          )}
+          <TouchableOpacity
+            style={styles.replayRow}
+            onPress={() => setReplaying((r) => !r)}
+          >
+            <Text style={styles.replayRowText}>
+              {replaying ? '■  stop' : '▶  replay'}
+            </Text>
+          </TouchableOpacity>
+        </>
       ) : (
         <Text style={styles.textContent}>{msg.content}</Text>
       )}
@@ -178,21 +197,9 @@ const styles = StyleSheet.create({
   emptyText:    { color: COLORS.text, fontSize: 18, fontWeight: '700' },
   emptyHint:    { color: COLORS.textSecondary, fontSize: 14 },
 
-  sectionHeader: {
-    marginTop:    20,
-    marginBottom: 10,
-    gap:          4,
-  },
-  sectionDate: {
-    color:      COLORS.text,
-    fontWeight: '700',
-    fontSize:   15,
-  },
-  sectionPrompt: {
-    color:     COLORS.accent,
-    fontSize:  12,
-    fontStyle: 'italic',
-  },
+  sectionHeader: { marginTop: 20, marginBottom: 10, gap: 4 },
+  sectionDate:   { color: COLORS.text, fontWeight: '700', fontSize: 15 },
+  sectionPrompt: { color: COLORS.accent, fontSize: 12, fontStyle: 'italic' },
 
   card: {
     backgroundColor: COLORS.surface,
@@ -209,6 +216,19 @@ const styles = StyleSheet.create({
   authorName:  { color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' },
   authorMine:  { color: COLORS.accent },
   timestamp:   { color: COLORS.textSecondary, fontSize: 11 },
-  drawing:     { height: 200, width: '100%' },
+
+  // Static preview keeps a fixed height; replay uses aspectRatio (portrait)
+  drawing:          { height: 180, width: '100%', borderRadius: 8, overflow: 'hidden' },
+  drawingContainer: { borderRadius: 8 },
+
+  replayRow: {
+    alignSelf:       'flex-start',
+    backgroundColor: COLORS.surfaceHigh,
+    borderRadius:    8,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+  },
+  replayRowText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' },
+
   textContent: { color: COLORS.text, fontSize: 18, lineHeight: 26 },
 });

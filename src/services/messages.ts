@@ -10,6 +10,7 @@ import { db } from '../config/firebase';
 import {
   ref,
   set,
+  get,
   push,
   remove,
   onValue,
@@ -131,6 +132,40 @@ export async function markLatestRead(pairId: string): Promise<void> {
 /** Delete a single message from history. */
 export async function deleteMessage(pairId: string, messageId: string): Promise<void> {
   await remove(ref(db, `messages/${pairId}/history/${messageId}`));
+}
+
+// ─── Doodle-per-day limit ─────────────────────────────────────────────────────
+
+/**
+ * The "doodle day" resets at 19:00 Malaysia Time = 11:00 UTC every day.
+ * France time: ~12:00 winter / ~13:00 summer.
+ */
+const DOODLE_RESET_UTC_MS = 11 * 60 * 60 * 1000; // 11:00 UTC
+
+function currentDoodleDay(): number {
+  return Math.floor((Date.now() - DOODLE_RESET_UTC_MS) / 86_400_000);
+}
+
+/** Returns true if the user can send a doodle right now. */
+export function canSendDoodleToday(lastSentAt: number | null): boolean {
+  if (lastSentAt === null) return true;
+  return currentDoodleDay() > Math.floor((lastSentAt - DOODLE_RESET_UTC_MS) / 86_400_000);
+}
+
+/** Returns the Date when the next doodle slot opens. */
+export function nextDoodleResetTime(): Date {
+  return new Date((currentDoodleDay() + 1) * 86_400_000 + DOODLE_RESET_UTC_MS);
+}
+
+/** Read the timestamp of the last doodle sent by this user (null if never). */
+export async function getLastDoodleTime(pairId: string, userId: string): Promise<number | null> {
+  const snap = await get(ref(db, `doodleDays/${pairId}/${userId}`));
+  return snap.exists() ? (snap.val() as number) : null;
+}
+
+/** Record that this user just sent a doodle. */
+export async function recordDoodleSent(pairId: string, userId: string): Promise<void> {
+  await set(ref(db, `doodleDays/${pairId}/${userId}`), Date.now());
 }
 
 /**
